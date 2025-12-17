@@ -2,23 +2,23 @@ import pandas as pd
 import numpy as np
 import os
 
-# 1. Configuración de rutas
-INPUT_FILE = "../data/raw/application_train.csv"
-OUTPUT_FILE = "../data/processed/train_clean.csv"
+# --- CAMBIO DE RUTAS ---
+# Ahora la entrada es el archivo que salió del paso 1
+INPUT_FILE = "../data/processed/step1_merged.csv"
+OUTPUT_FILE = "../data/processed/step2_clean.csv"
 
 def limpiar_datos():
-    print("--- INICIANDO PROCESO DE LIMPIEZA ---")
+    print("\n--- 2. INICIANDO PROCESO DE LIMPIEZA ---")
     
     # Cargar datos
     if not os.path.exists(INPUT_FILE):
-        print(f"Error: No encuentro {INPUT_FILE}")
+        print(f"Error: No encuentro {INPUT_FILE}. Ejecuta primero '1_integracion.py'")
         return
     
     df = pd.read_csv(INPUT_FILE)
-    print(f"Datos originales cargados: {df.shape}")
+    print(f"Datos integrados cargados: {df.shape}")
 
     # PASO 1: Eliminar columnas con demasiados nulos (> 40%)
-    # Esto ayuda a reducir la dimensionalidad (requisito del examen)
     umbral = 0.4
     nulos = df.isnull().mean()
     columnas_a_borrar = nulos[nulos > umbral].index
@@ -27,33 +27,30 @@ def limpiar_datos():
     print(f"Se eliminaron {len(columnas_a_borrar)} columnas con >{umbral*100}% de nulos.")
     
     # PASO 2: Rellenar nulos restantes (Imputación)
-    # Variables numéricas -> Rellenar con la Mediana
-    # Variables de texto (categóricas) -> Rellenar con la Moda (el valor más común)
-    
     columnas_numericas = df_limpio.select_dtypes(include=[np.number]).columns
     columnas_categoricas = df_limpio.select_dtypes(include=['object']).columns
 
-    print("Imputando valores faltantes...")
+    print("Imputando valores faltantes (Mediana/Moda)...")
     
-    # Rellenar numéricas
+    # Rellenar numéricas con la Mediana
     for col in columnas_numericas:
         mediana = df_limpio[col].median()
-        df_limpio[col] = df_limpio[col].fillna(mediana) # Versión segura para Pandas nuevos
+        df_limpio[col] = df_limpio[col].fillna(mediana)
         
-    # Rellenar categóricas
+    # Rellenar categóricas con la Moda
     for col in columnas_categoricas:
-        moda = df_limpio[col].mode()[0]
-        df_limpio[col] = df_limpio[col].fillna(moda)
+        # Aseguramos que exista una moda antes de rellenar
+        if not df_limpio[col].mode().empty:
+            moda = df_limpio[col].mode()[0]
+            df_limpio[col] = df_limpio[col].fillna(moda)
 
-    # Verificar que no queden nulos
+    # Verificar limpieza
     total_nulos = df_limpio.isnull().sum().sum()
     print(f"Total de valores nulos restantes: {total_nulos}")
-    print(f"Dimensiones finales: {df_limpio.shape}")
 
     # PASO 3: Guardar el archivo limpio
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     df_limpio.to_csv(OUTPUT_FILE, index=False)
-    print(f"Archivo guardado exitosamente en: {OUTPUT_FILE}")
+    print(f"Archivo limpio guardado en: {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     limpiar_datos()
